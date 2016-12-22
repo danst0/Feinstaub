@@ -44,11 +44,11 @@ else:
              
 def house_keeping():
     global save_current_delay
-    logging.info('House keeping')
+    logging.debug('House keeping')
     with lock:
         save_current_delay = True
-    house_delay = random.randrange(250, 500)
-    logging.info('House keeping end, restart timer ({0} secs)'.format(house_delay))
+    house_delay = random.randrange(150, 600)
+    logging.debug('House keeping end, restart timer ({0} secs)'.format(house_delay))
     threading.Timer(house_delay, house_keeping).start()
 
 class SENSOR:
@@ -104,10 +104,19 @@ class SENSOR:
         self.sensor.workstate = SDS011.WorkStates.Sleeping
     
     def significant_deviation_from_average(self, values):
-        sgn_level = 0.2
+        # Significant changes upwards means more particles
+        up_sgn_level = 0.2
+        up_abs_sign_level = 3
+
+        # Significant changes downwards means less particles
+        down_sgn_level = 0.5
+        down_abs_sign_level = 10
         result = False
         for i in [0, 1]:
-            if abs((values[i] - self.rolling_average[i])/self.rolling_average[i]) > sgn_level:
+            if (values[i] - self.rolling_average[i])/self.rolling_average[i] > up_sgn_level or \
+              values[i] - self.rolling_average[i] > up_abs_sign_level or \
+              (-values[i] + self.rolling_average[i])/self.rolling_average[i] > down_sgn_level or \
+              -values[i] + self.rolling_average[i] > down_abs_sign_level:
                 logging.info('Sign. deviation to average (No. {0}). Value: {1}, Average: {2}'.format(i, values[i], self.rolling_average[i]))
                 result = True
                 break
@@ -255,11 +264,12 @@ if __name__ == "__main__":
         conn.commit()
 
         real_delay = DELAYS[current_delay_no]
-        
+        shown_delay = real_delay
         exceeding_limits = False
         for i in range(2):
             if values[i] >= GRENZWERTE[i]:
                 real_delay = DELAYS[0]
+                shown_delay = real_delay
                 logging.info('Limit(s) exceeded')
                 break
         
@@ -267,7 +277,7 @@ if __name__ == "__main__":
             logging.debug('Putting sensor to sleep')
             real_delay -= WARM_UP_DELAY
             sds.sleep()
-        logging.info('Daemon waiting for: {0} seconds'.format(real_delay))
+        logging.info('Daemon waiting for: {0} seconds'.format(shown_delay))
         time.sleep(real_delay)
     
 

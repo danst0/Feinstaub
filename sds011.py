@@ -124,7 +124,7 @@ class SDS011(object):
                                     timeout=2)
         if self.device.isOpen() is False:
             self.device.open()
-        logging.info("Communication to device at %s initiated.", device_path)
+        logging.debug("Communication to device at %s initiated.", device_path)
 
         # ToDo: initiate whith the values, the senor has. sensor has to be
         # queried for that
@@ -159,12 +159,12 @@ class SDS011(object):
         # at this point, device is awake, shure. So store this state
         self.__workstate = self.WorkStates.Measuring
         self.__get_current_config()
-        logging.info("Sensor has firmware %s", self.__firmware)
-        logging.info("Sensor is in reportmode %s", self.__reportmode)
-        logging.info("Sensor is in workstate %s", self.__workstate)
-        logging.info("Sensor is in dutycycle %s, None if Zero",
+        logging.info("Sensor firmware %s", self.__firmware)
+        logging.info("Sensor reportmode %s", self.__reportmode)
+        logging.info("Sensor workstate %s", self.__workstate)
+        logging.info("Sensor dutycycle %s, None if Zero",
                     self.__dutycycle)
-        logging.info("Sensor has Device ID: %s", self.device_id)
+        logging.info("Sensor device ID: %s", self.device_id)
         logging.debug("Constructor successful executed.")
 
     # Destructor
@@ -187,9 +187,9 @@ class SDS011(object):
             self.__send(self.Command.ReportMode, self.__construct_data(
                 self.CommandMode.Setting, value))
             self.__reportmode = value
-            logging.info("reportmode setted: %s", value)
+            logging.debug("Reportmode set: %s", value)
         else:
-            raise TypeError("reportmode must be of type SDS011.ReportModes")
+            raise TypeError("Reportmode must be of type SDS011.ReportModes")
 
     # workstate
     @property
@@ -204,7 +204,7 @@ class SDS011(object):
             self.__send(self.Command.WorkState, self.__construct_data(
                 self.CommandMode.Setting, value))
             self.__workstate = value
-            logging.info("workstate setted: %s", value)
+            logging.debug("Workstate set: %s", value)
         else:
             raise TypeError("ReportMode must be of type SDS011.WorkStates")
     # dutycycle
@@ -229,7 +229,7 @@ class SDS011(object):
             self.__read_timeout = self.__calculate_read_timeout(value)
             self.__dutycycle_start = time.time()
             logging.debug("New timeout for dutycycle = %s", self.__read_timeout)
-            logging.info("dutycycle setted: %s", value)
+            logging.debug("Dutycycle set: %s", value)
             self.__get_current_config()
         else:
             raise TypeError("dutycycle must be of type SDS011.DutyCycles")
@@ -299,13 +299,13 @@ class SDS011(object):
     def __calculate_read_timeout(self, timeoutvalue):
         newtimeout = 60 * timeoutvalue + \
             self.__read_timeout_drift_percent / 100 * 60 * timeoutvalue
-        logging.info("Timeout calculated for %s is %s",
+        logging.debug("Timeout calculated for %s is %s",
                     timeoutvalue, newtimeout)
         return newtimeout
 
     def get_values(self):
         '''gets the sensor response and returns measured value of pm10 and pm25'''
-        logging.info("get_values entered")
+        logging.debug("get_values entered")
         if self.__workstate == self.WorkStates.Sleeping:
             raise ex.WorkStateError("sensor is sleeping and will not " +
                                     "send any values. Wake it up first.")
