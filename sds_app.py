@@ -23,6 +23,7 @@ privateKey = "0mbx4yyBmZFjYjVk8kqB"  # private key, only you should know
 fields = ["pm10", "pm25"] # Your feed's data fields
 
 GRENZWERTE = [50, 25]
+WARM_UP_DELAY = 45
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=getattr(logging, 'INFO'))
 
@@ -99,7 +100,7 @@ class SENSOR:
         return values
         
     def sleep(self):
-        logging.info("Going to sleep a while")
+        logging.debug("Going to sleep a while")
         self.sensor.workstate = SDS011.WorkStates.Sleeping
     
     def significant_deviation_from_average(self, values):
@@ -120,7 +121,7 @@ def change_delay(cur_delay, add_factor):
     return result
 
 def exit_gracefully(signal, frame):
-    logging.info('Exiting')
+    logging.debug('Exiting')
     pickle.dump(current_delay_no, open('/home/pi/feinstaub/current_delay.p', 'wb'))
     conn.close()
     sys.exit(0)
@@ -137,7 +138,7 @@ if __name__ == "__main__":
             break
 
     if not os.path.isfile('/home/pi/feinstaub/feinstaub.rrd'):
-        logging.info('Creating new RRD file')
+        logging.debug('Creating new RRD file')
         ret = rrdtool.create('/home/pi/feinstaub/feinstaub.rrd', '--step', '30', '--start', '0',
                                 'DS:pm10:GAUGE:120:0:999',
                                 'DS:pm25:GAUGE:120:0:999',
@@ -164,15 +165,14 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, exit_gracefully)
     
     while True:
-        logging.info('Current delay: {0} seconds'.format(DELAYS[current_delay_no]))
+        logging.debug('Current delay: {0} seconds'.format(DELAYS[current_delay_no]))
         if sds.sensor.workstate == SDS011.WorkStates.Sleeping:
             sds.wake_up()
-            wake_delay = 45
-            logging.info('Waking up, delay for {0} secs'.format(wake_delay))
-            time.sleep(wake_delay)
+            logging.debug('Waking up, delay for {0} secs'.format(WARM_UP_DELAY))
+            time.sleep(WARM_UP_DELAY)
         values = sds.measure()
         if sds.significant_deviation_from_average(values):
-            logging.info('Significant deviation to average')
+            logging.debug('Significant deviation to average')
             current_delay_no = change_delay(current_delay_no, -1)
         else:
             logging.debug('No significant deviation to average')
@@ -180,7 +180,7 @@ if __name__ == "__main__":
             
         with lock:
             if save_current_delay:
-                logging.info('Saving current_delay to pickle jar')        
+                logging.debug('Saving current_delay to pickle jar')        
                 pickle.dump(current_delay_no, open('/home/pi/feinstaub/current_delay.p', 'wb'))
                 logging.info('Graphing Feinstaub to JPG')
                 ret = rrdtool.graph( '/home/pi/feinstaub/feinstaub.gif', '--start', '-1d',
@@ -204,9 +204,9 @@ if __name__ == "__main__":
 
 
                 if ret and len(ret) == 3:
-                    logging.info('RRD graph with message: {0}'.format(ret))
+                    logging.debug('RRD graph with message: {0}'.format(ret))
 
-                logging.info('Finished')
+                logging.debug('Finished')
                 save_current_delay = False
 
         #wget -qO- "http://data.sparkfun.com/input/1n4x2aapnqIpXp2zZzwo?private_key=0mbx4yyBmZFjYjVk8kqB&pm10=$PPM10&pm25=$PPM25" &> /dev/null
@@ -245,9 +245,9 @@ if __name__ == "__main__":
         logging.info("Logging to file")
         ret = rrdtool.update('/home/pi/feinstaub/feinstaub.rrd','N:{0}:{1}'.format(values[0], values[1]));
         if ret:
-            logger.info('Message when updating')
-            logger.info(ret)
-            logger.info(rrdtool.error())
+            logger.debug('Message when updating')
+            logger.debug(ret)
+            logger.debug(rrdtool.error())
 
         logging.info("Logging to database")
         now = datetime.datetime.now()
@@ -264,7 +264,8 @@ if __name__ == "__main__":
                 break
         
         if  real_delay >= 3*60:
-            logging.info('Putting sensor to sleep')
+            logging.debug('Putting sensor to sleep')
+            real_delay -= WARM_UP_DELAY
             sds.sleep()
         logging.info('Daemon waiting for: {0} seconds'.format(real_delay))
         time.sleep(real_delay)
