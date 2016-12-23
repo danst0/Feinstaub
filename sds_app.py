@@ -105,18 +105,19 @@ class SENSOR:
     
     def significant_deviation_from_average(self, values):
         # Significant changes upwards means more particles
-        up_sgn_level = 0.2
-        up_abs_sign_level = 3
+        up_sgn_level = 0.3
+        up_abs_sign_level = 4
 
         # Significant changes downwards means less particles
-        down_sgn_level = 0.5
-        down_abs_sign_level = 10
+        down_sgn_level = 0.7
+        down_abs_sign_level = 15
         result = False
+        
         for i in [0, 1]:
-            if (values[i] - self.rolling_average[i])/self.rolling_average[i] > up_sgn_level or \
+            if (values[i] - self.rolling_average[i])/self.rolling_average[i] > up_sgn_level and \
               values[i] - self.rolling_average[i] > up_abs_sign_level or \
-              (-values[i] + self.rolling_average[i])/self.rolling_average[i] > down_sgn_level or \
-              -values[i] + self.rolling_average[i] > down_abs_sign_level:
+              (self.rolling_average[i] - values[i])/self.rolling_average[i] > down_sgn_level and \
+              self.rolling_average[i] - values[i] > down_abs_sign_level:
                 logging.info('Sign. deviation to average (No. {0}). Value: {1}, Average: {2}'.format(i, values[i], self.rolling_average[i]))
                 result = True
                 break
@@ -245,7 +246,7 @@ if __name__ == "__main__":
         # and include both our data (params) and headers
         c.request("POST", "/input/" + publicKey + ".txt", params, headers)
         try:
-            r = c.getresponse() # Get the server's response and print it
+            r = c.getresponse(timeout=4) # Get the server's response and print it
         except:
             logging.error('No connection to server possible')
         else:
